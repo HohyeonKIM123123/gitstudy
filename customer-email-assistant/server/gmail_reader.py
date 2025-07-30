@@ -11,6 +11,9 @@ from googleapiclient.errors import HttpError
 import json
 from bs4 import BeautifulSoup
 
+# config.py에서 설정 임포트
+from config import Config
+
 class GmailReader:
     SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 
               'https://www.googleapis.com/auth/gmail.send']
@@ -35,11 +38,11 @@ class GmailReader:
                 if creds and creds.expired and creds.refresh_token:
                     creds.refresh(Request())
                 else:
-                    # Use environment variables for OAuth flow
+                    # Use environment variables from config for OAuth flow
                     client_config = {
                         "installed": {
-                            "client_id": os.getenv("GMAIL_CLIENT_ID"),
-                            "client_secret": os.getenv("GMAIL_CLIENT_SECRET"),
+                            "client_id": Config.GMAIL_CLIENT_ID,
+                            "client_secret": Config.GMAIL_CLIENT_SECRET,
                             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                             "token_uri": "https://oauth2.googleapis.com/token",
                             "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob", "http://localhost"]
@@ -243,3 +246,4 @@ class GmailReader:
         except HttpError as error:
             print(f'An error occurred marking email as read: {error}')
             return False
+

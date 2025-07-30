@@ -4,10 +4,14 @@ from typing import Dict, List
 import json
 import re
 
+# config.py에서 설정 임포트
+from config import Config
+
 class EmailClassifier:
     def __init__(self):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = os.getenv("CLASSIFICATION_MODEL", "gpt-3.5-turbo")
+        # config.py에서 API 키와 모델 이름 가져옴
+        self.client = openai.OpenAI(api_key=Config.OPENAI_API_KEY)
+        self.model = Config.CLASSIFICATION_MODEL
         
     async def classify(self, email_content: str, subject: str = "") -> Dict:
         """Classify email priority and extract tags"""
@@ -240,3 +244,5 @@ Always respond with valid JSON format."""
                 'description': 'Promotional or irrelevant emails'
             }
         }
+
+

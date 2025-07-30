@@ -5,6 +5,9 @@ from typing import List, Dict, Optional
 from bson import ObjectId
 import json
 
+# config.py에서 설정 임포트
+from config import Config
+
 class Database:
     def __init__(self):
         self.client = None
@@ -14,7 +17,7 @@ class Database:
     async def connect(self):
         """Connect to MongoDB"""
         try:
-            mongodb_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017/email_assistant")
+            mongodb_uri = Config.MONGODB_URI
             self.client = motor.motor_asyncio.AsyncIOMotorClient(mongodb_uri)
             
             # Get database name from URI or use default
@@ -317,3 +320,5 @@ class Database:
         except Exception as e:
             print(f"Error getting email trends: {e}")
             return {}
+}
+

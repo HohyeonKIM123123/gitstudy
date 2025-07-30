@@ -7,10 +7,14 @@ from dotenv import load_dotenv
 from typing import List, Optional
 from pydantic import BaseModel
 
+# 새로 생성된 config.py에서 설정 임포트
+from config import Config
+
 from gmail_reader import GmailReader
 from reply_generator import ReplyGenerator
 from classifier import EmailClassifier
 from db import Database
+from email_processor import EmailProcessor # 새로 임포트
 
 # Load environment variables
 load_dotenv()
@@ -20,7 +24,7 @@ app = FastAPI(title="Customer Email Assistant API", version="1.0.0")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","),
+    allow_origins=Config.CORS_ORIGINS, # config에서 가져옴
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,6 +35,7 @@ gmail_reader = GmailReader()
 reply_generator = ReplyGenerator()
 email_classifier = EmailClassifier()
 db = Database()
+email_processor = EmailProcessor() # EmailProcessor 인스턴스 생성
 
 # Pydantic models
 class EmailResponse(BaseModel):
@@ -104,11 +109,13 @@ async def generate_reply(email_id: str, context: dict = {}):
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
         
+        # reply_generator의 generate_reply 함수가 이제 EmailProcessor를 내부적으로 사용합니다.
+        # 따라서 여기서는 email['body']와 기타 필요한 context만 전달합니다.
         reply = await reply_generator.generate_reply(
             email_content=email['body'],
-            subject=email['subject'],
-            sender=email['sender_email'],
-            context=context
+            subject=email['subject'], # subject는 generate_reply 내부에서 prompt 구성에 사용될 수 있음
+            sender=email['sender_email'], # sender도 generate_reply 내부에서 prompt 구성에 사용될 수 있음
+            context=context # 분류 결과 등 추가 컨텍스트 전달
         )
         
         return {"reply": reply}
@@ -206,5 +213,7 @@ async def shutdown_event():
     await db.disconnect()
 
 if __name__ == "__main__":
-    port = int(os.getenv("SERVER_PORT", 8000))
+    port = Config.SERVER_PORT # config에서 가져옴
     uvicorn.run(app, host="0.0.0.0", port=port, reload=True)
+
+
