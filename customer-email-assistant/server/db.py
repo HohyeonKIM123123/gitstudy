@@ -17,9 +17,8 @@ class Database:
             mongodb_uri = os.getenv("MONGODB_URI", "mongodb://localhost:27017/email_assistant")
             self.client = motor.motor_asyncio.AsyncIOMotorClient(mongodb_uri)
             
-            # Get database name from URI or use default
-            db_name = mongodb_uri.split('/')[-1] if '/' in mongodb_uri else 'email_assistant'
-            self.db = self.client[db_name]
+            # Use a simple database name
+            self.db = self.client.emails
             self.emails_collection = self.db.emails
             
             # Create indexes for better performance

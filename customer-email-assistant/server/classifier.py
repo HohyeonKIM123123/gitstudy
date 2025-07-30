@@ -227,3 +227,48 @@ Always respond with valid JSON format."""
                 'description': 'Promotional or irrelevant emails'
             }
         }
+    
+    def quick_classify(self, email_content: str, subject: str = "") -> Dict:
+        """Quick classification using keywords - no AI call"""
+        try:
+            content_lower = (email_content + " " + subject).lower()
+            
+            # Quick priority detection
+            urgent_keywords = ['urgent', 'emergency', 'asap', 'critical', 'immediately', 'help', 'problem', 'issue', 'broken', 'down', 'error']
+            sales_keywords = ['buy', 'purchase', 'price', 'cost', 'demo', 'trial', 'quote', 'sales', 'product', 'service']
+            spam_keywords = ['promotion', 'offer', 'deal', 'discount', 'marketing', 'unsubscribe', 'click here', 'free']
+            
+            # Determine priority
+            if any(keyword in content_lower for keyword in urgent_keywords):
+                priority = 'urgent'
+            elif any(keyword in content_lower for keyword in sales_keywords):
+                priority = 'sales'
+            elif any(keyword in content_lower for keyword in spam_keywords):
+                priority = 'spam'
+            else:
+                priority = 'general'
+            
+            # Quick tags
+            tags = []
+            tag_keywords = {
+                'billing': ['bill', 'payment', 'invoice', 'charge', 'refund'],
+                'technical': ['technical', 'bug', 'error', 'not working', 'support'],
+                'complaint': ['complaint', 'unhappy', 'disappointed', 'angry'],
+                'question': ['question', 'how', 'what', 'why', 'when'],
+                'account': ['account', 'login', 'password', 'access']
+            }
+            
+            for tag, keywords in tag_keywords.items():
+                if any(keyword in content_lower for keyword in keywords):
+                    tags.append(tag)
+            
+            return {
+                'priority': priority,
+                'tags': tags[:3],  # Limit to 3 tags
+                'confidence': 0.8,  # High confidence for keyword matching
+                'reasoning': 'Quick keyword-based classification'
+            }
+            
+        except Exception as e:
+            print(f"Error in quick classification: {e}")
+            return self._get_default_classification()

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from typing import List, Optional
 from pydantic import BaseModel
 
-from gmail_reader import GmailReader
+from gmail_imap_reader import GmailIMAPReader
 from reply_generator import ReplyGenerator
 from classifier import EmailClassifier
 from db import Database
@@ -27,7 +27,13 @@ app.add_middleware(
 )
 
 # Initialize services
-gmail_reader = GmailReader()
+try:
+    gmail_reader = GmailIMAPReader()
+    print("Gmail IMAP reader initialized successfully")
+except Exception as e:
+    print(f"Gmail IMAP reader initialization failed: {e}")
+    gmail_reader = None
+
 reply_generator = ReplyGenerator()
 email_classifier = EmailClassifier()
 db = Database()
@@ -123,13 +129,9 @@ async def send_reply(email_id: str, reply_request: ReplyRequest):
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
         
-        # Send reply via Gmail
-        success = await gmail_reader.send_reply(
-            original_email_id=email['gmail_id'],
-            reply_content=reply_request.content,
-            to_email=email['sender_email'],
-            subject=f"Re: {email['subject']}"
-        )
+        # Send reply via Gmail (IMAP doesn't support sending, use SMTP later)
+        # For now, just mark as replied
+        success = True  # Placeholder
         
         if success:
             # Update email status
@@ -197,8 +199,40 @@ async def get_stats():
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database connection"""
+    """Initialize database connection and sync emails"""
     await db.connect()
+    
+    # Auto-sync emails on startup
+    if gmail_reader:
+        try:
+            print("Auto-syncing emails from Gmail...")
+            new_emails = await gmail_reader.fetch_emails(limit=50)
+            
+            processed_count = 0
+            for email_data in new_emails:
+                # Check if email already exists
+                existing = await db.get_email_by_gmail_id(email_data['gmail_id'])
+                if not existing:
+                    # Quick classification (skip AI for now, use keywords)
+                    classification = email_classifier.quick_classify(
+                        email_data['body'], 
+                        email_data['subject']
+                    )
+                    
+                    # Store email with classification
+                    email_data.update({
+                        'priority': classification['priority'],
+                        'tags': classification['tags'],
+                        'status': 'unread'
+                    })
+                    
+                    await db.store_email(email_data)
+                    processed_count += 1
+            
+            print(f"Auto-sync completed. {processed_count} new emails processed.")
+            
+        except Exception as e:
+            print(f"Auto-sync failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():

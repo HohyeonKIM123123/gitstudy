@@ -23,7 +23,31 @@ class GmailReader:
     def _initialize_service(self):
         """Initialize Gmail API service"""
         try:
-            # Load credentials from environment or file
+            # Try to use refresh token from environment first
+            refresh_token = os.getenv("GMAIL_REFRESH_TOKEN")
+            client_id = os.getenv("GMAIL_CLIENT_ID")
+            client_secret = os.getenv("GMAIL_CLIENT_SECRET")
+            
+            if refresh_token and client_id and client_secret:
+                # Create credentials from refresh token
+                creds_info = {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "refresh_token": refresh_token,
+                    "type": "authorized_user"
+                }
+                
+                creds = Credentials.from_authorized_user_info(creds_info, self.SCOPES)
+                
+                # Refresh the token
+                creds.refresh(Request())
+                
+                self.credentials = creds
+                self.service = build('gmail', 'v1', credentials=creds)
+                print("Gmail service initialized with refresh token")
+                return
+            
+            # Fallback to file-based credentials
             creds = None
             
             # Check if we have stored credentials
@@ -38,8 +62,8 @@ class GmailReader:
                     # Use environment variables for OAuth flow
                     client_config = {
                         "installed": {
-                            "client_id": os.getenv("GMAIL_CLIENT_ID"),
-                            "client_secret": os.getenv("GMAIL_CLIENT_SECRET"),
+                            "client_id": client_id,
+                            "client_secret": client_secret,
                             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                             "token_uri": "https://oauth2.googleapis.com/token",
                             "redirect_uris": ["urn:ietf:wg:oauth:2.0:oob", "http://localhost"]
