@@ -1,38 +1,25 @@
 import os
-import openai
+import google.generativeai as genai
 from typing import Dict, Optional
 import json
 
 class ReplyGenerator:
     def __init__(self):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = os.getenv("REPLY_MODEL", "gpt-4")
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel(os.getenv("REPLY_MODEL", "gemini-pro"))
         
     async def generate_reply(self, email_content: str, subject: str, 
                            sender: str, context: Dict = {}) -> str:
         """Generate an AI reply to an email"""
         try:
             # Build the prompt
-            prompt = self._build_prompt(email_content, subject, sender, context)
+            system_prompt = self._get_system_prompt(context.get('tone', 'professional'))
+            user_prompt = self._build_prompt(email_content, subject, sender, context)
+            full_prompt = f"{system_prompt}\n\n{user_prompt}"
             
-            # Generate reply using OpenAI
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": self._get_system_prompt(context.get('tone', 'professional'))
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=500,
-                temperature=0.7
-            )
-            
-            reply = response.choices[0].message.content.strip()
+            # Generate reply using Gemini
+            response = self.model.generate_content(full_prompt)
+            reply = response.text.strip()
             
             # Add signature if requested
             if context.get('include_signature', True):
@@ -113,23 +100,18 @@ Website: www.company.com"""
         
         # Customize template based on email content
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are customizing an email template. Make it specific to the customer's inquiry while maintaining the template structure."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"Customize this template based on the customer email:\n\nTemplate:\n{template}\n\nCustomer Email:\n{email_content}"
-                    }
-                ],
-                max_tokens=300,
-                temperature=0.5
-            )
+            prompt = f"""You are customizing an email template. Make it specific to the customer's inquiry while maintaining the template structure.
+
+Customize this template based on the customer email:
+
+Template:
+{template}
+
+Customer Email:
+{email_content}"""
             
-            return response.choices[0].message.content.strip()
+            response = self.model.generate_content(prompt)
+            return response.text.strip()
             
         except Exception as e:
             print(f"Error customizing template: {e}")
@@ -177,16 +159,8 @@ If you have any urgent concerns in the meantime, please don't hesitate to contac
                                  email_content: str) -> Dict:
         """Suggest improvements to a draft reply"""
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert in customer service communication. Analyze the draft reply and suggest improvements."
-                    },
-                    {
-                        "role": "user",
-                        "content": f"""
+            prompt = f"""You are an expert in customer service communication. Analyze the draft reply and suggest improvements.
+
 Please analyze this draft reply and suggest improvements:
 
 Original Customer Email:
@@ -202,13 +176,9 @@ Please provide:
 4. Missing elements (if any)
 5. Improved version (if needed)
 """
-                    }
-                ],
-                max_tokens=600,
-                temperature=0.3
-            )
             
-            analysis = response.choices[0].message.content.strip()
+            response = self.model.generate_content(prompt)
+            analysis = response.text.strip()
             
             return {
                 "analysis": analysis,

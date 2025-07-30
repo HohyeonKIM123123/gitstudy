@@ -1,37 +1,24 @@
 import os
-import openai
+import google.generativeai as genai
 from typing import Dict, List
 import json
 import re
 
 class EmailClassifier:
     def __init__(self):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.model = os.getenv("CLASSIFICATION_MODEL", "gpt-3.5-turbo")
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel(os.getenv("CLASSIFICATION_MODEL", "gemini-pro"))
         
     async def classify(self, email_content: str, subject: str = "") -> Dict:
         """Classify email priority and extract tags"""
         try:
             # Build classification prompt
-            prompt = self._build_classification_prompt(email_content, subject)
+            system_prompt = self._get_classification_system_prompt()
+            user_prompt = self._build_classification_prompt(email_content, subject)
+            full_prompt = f"{system_prompt}\n\n{user_prompt}"
             
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": self._get_classification_system_prompt()
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=200,
-                temperature=0.3
-            )
-            
-            result = response.choices[0].message.content.strip()
+            response = self.model.generate_content(full_prompt)
+            result = response.text.strip()
             return self._parse_classification_result(result)
             
         except Exception as e:
