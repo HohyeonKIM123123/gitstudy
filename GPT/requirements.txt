@@ -1,0 +1,7 @@
+streamlit
+pandas
+openai
+imaplib2
+python-dotenv
+smtplib
+email
