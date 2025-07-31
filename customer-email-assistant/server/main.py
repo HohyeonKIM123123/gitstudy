@@ -69,6 +69,13 @@ class PensionInfoRequest(BaseModel):
 class PensionAnalyzeRequest(BaseModel):
     text: str
 
+class ResponseSettingsRequest(BaseModel):
+    settings: dict
+
+class ResponsePreviewRequest(BaseModel):
+    settings: dict
+    sampleQuery: str
+
 @app.get("/")
 async def root():
     return {"message": "Customer Email Assistant API", "version": "1.0.0"}
@@ -257,6 +264,64 @@ async def analyze_pension_info(request: PensionAnalyzeRequest):
     try:
         analyzed_info = await pension_analyzer.analyze_pension_info(request.text)
         return {"analyzed_info": analyzed_info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 응답 설정 관리 API
+@app.get("/response-settings")
+async def get_response_settings():
+    """응답 설정 조회"""
+    try:
+        settings = await db.get_response_settings()
+        return settings or {
+            "settings": {
+                "greeting": "안녕하세요! RPA펜션입니다 😊",
+                "closing": "감사합니다. 좋은 하루 되세요!",
+                "tone": "friendly",
+                "structure": "greeting_answer_additional_closing",
+                "customInstructions": "",
+                "responseLength": "medium",
+                "includeEmoji": True,
+                "personalTouch": True
+            },
+            "updated_at": None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/response-settings")
+async def save_response_settings(request: ResponseSettingsRequest):
+    """응답 설정 저장"""
+    try:
+        await db.save_response_settings(request.settings)
+        return {"message": "응답 설정이 저장되었습니다."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/response-preview")
+async def generate_response_preview(request: ResponsePreviewRequest):
+    """응답 설정 미리보기 생성"""
+    try:
+        # 응답 설정을 컨텍스트에 포함
+        context = {
+            "response_settings": request.settings,
+            "pension_info": None
+        }
+        
+        # 펜션 정보도 포함
+        pension_info = await db.get_pension_info()
+        if pension_info and pension_info.get('analyzed_info'):
+            context['pension_info'] = pension_info['analyzed_info']
+        
+        # 미리보기 응답 생성
+        preview = await reply_generator.generate_reply(
+            email_content=request.sampleQuery,
+            subject="펜션 문의",
+            sender="customer@example.com",
+            context=context
+        )
+        
+        return {"preview": preview}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

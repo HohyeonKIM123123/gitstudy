@@ -12,8 +12,11 @@ class ReplyGenerator:
                            sender: str, context: Dict = {}) -> str:
         """Generate an AI reply to an email"""
         try:
-            # Build the prompt with pension info
-            system_prompt = self._get_system_prompt(context.get('tone', 'professional'))
+            # 응답 설정 가져오기
+            response_settings = context.get('response_settings', {})
+            
+            # Build the prompt with pension info and response settings
+            system_prompt = self._get_system_prompt_with_settings(response_settings)
             user_prompt = self._build_prompt(email_content, subject, sender, context)
             full_prompt = f"{system_prompt}\n\n{user_prompt}"
             
@@ -21,15 +24,17 @@ class ReplyGenerator:
             response = self.model.generate_content(full_prompt)
             reply = response.text.strip()
             
-            # Add signature if requested
-            if context.get('include_signature', True):
-                reply += self._get_signature()
+            # 응답 설정에 따라 후처리
+            reply = self._apply_response_settings(reply, response_settings)
             
             return reply
             
         except Exception as e:
             print(f"Error generating reply: {e}")
-            return "안녕하세요. RPA펜션입니다. 문의해 주셔서 감사합니다. 빠른 시일 내에 답변드리겠습니다."
+            # 기본 응답 설정 적용
+            default_greeting = response_settings.get('greeting', '안녕하세요. RPA펜션입니다.')
+            default_closing = response_settings.get('closing', '감사합니다. 좋은 하루 되세요!')
+            return f"{default_greeting} 문의해 주셔서 감사합니다. 빠른 시일 내에 답변드리겠습니다. {default_closing}"
     
     def _build_prompt(self, email_content: str, subject: str, 
                      sender: str, context: Dict) -> str:
@@ -79,8 +84,80 @@ class ReplyGenerator:
 """
         return prompt
     
+    def _get_system_prompt_with_settings(self, response_settings: Dict) -> str:
+        """Get the system prompt with response settings applied"""
+        tone = response_settings.get('tone', 'friendly')
+        structure = response_settings.get('structure', 'greeting_answer_additional_closing')
+        response_length = response_settings.get('responseLength', 'medium')
+        include_emoji = response_settings.get('includeEmoji', True)
+        personal_touch = response_settings.get('personalTouch', True)
+        custom_instructions = response_settings.get('customInstructions', '')
+        
+        base_prompt = """당신은 RPA펜션의 고객 서비스 담당자입니다. 고객 문의에 대해 정확하고 도움이 되는 답변을 생성해주세요."""
+        
+        # 말투 설정
+        tone_instructions = {
+            'friendly': "친근하고 따뜻한 말투로 답변하세요. 고객이 편안함을 느낄 수 있도록 친구처럼 대화하되 예의는 지켜주세요.",
+            'formal': "정중하고 격식있는 말투로 답변하세요. 존댓말을 사용하고 전문적인 어조를 유지해주세요.",
+            'casual': "편안하고 자연스러운 말투로 답변하세요. 부담스럽지 않게 대화하되 도움이 되는 정보를 제공해주세요."
+        }
+        
+        # 응답 구조 설정
+        structure_instructions = {
+            'greeting_answer_additional_closing': "다음 구조로 답변하세요: 1) 인사말 2) 질문에 대한 답변 3) 추가 도움이 될 정보 4) 마무리 인사",
+            'greeting_answer_closing': "다음 구조로 답변하세요: 1) 인사말 2) 질문에 대한 답변 3) 마무리 인사",
+            'answer_additional_closing': "다음 구조로 답변하세요: 1) 질문에 대한 답변 2) 추가 도움이 될 정보 3) 마무리 인사",
+            'custom': f"사용자 정의 지시사항을 따라 답변하세요: {custom_instructions}"
+        }
+        
+        # 응답 길이 설정
+        length_instructions = {
+            'short': "간결하게 1-2문장으로 핵심만 답변하세요.",
+            'medium': "적당한 길이로 3-4문장 정도로 답변하세요.",
+            'long': "자세하게 5문장 이상으로 상세한 설명과 함께 답변하세요."
+        }
+        
+        # 추가 옵션
+        additional_instructions = []
+        if include_emoji:
+            additional_instructions.append("적절한 이모지를 사용하여 답변을 더 친근하게 만드세요.")
+        if personal_touch:
+            additional_instructions.append("고객의 상황에 맞는 개인적인 멘트나 조언을 추가하세요.")
+        
+        # 전체 프롬프트 구성
+        full_prompt = f"""{base_prompt}
+
+말투: {tone_instructions.get(tone, tone_instructions['friendly'])}
+
+구조: {structure_instructions.get(structure, structure_instructions['greeting_answer_additional_closing'])}
+
+길이: {length_instructions.get(response_length, length_instructions['medium'])}
+
+추가 지침:
+{chr(10).join(additional_instructions)}
+
+사용자 정의 지시사항:
+{custom_instructions}
+"""
+        
+        return full_prompt
+    
+    def _apply_response_settings(self, reply: str, response_settings: Dict) -> str:
+        """Apply response settings to the generated reply"""
+        greeting = response_settings.get('greeting', '')
+        closing = response_settings.get('closing', '')
+        
+        # 인사말과 마무리 인사가 설정되어 있고, 응답에 포함되지 않은 경우 추가
+        if greeting and not any(greet in reply for greet in [greeting[:10], "안녕하세요"]):
+            reply = f"{greeting}\n\n{reply}"
+        
+        if closing and not any(close in reply for close in [closing[:10], "감사합니다", "좋은 하루"]):
+            reply = f"{reply}\n\n{closing}"
+        
+        return reply
+    
     def _get_system_prompt(self, tone: str) -> str:
-        """Get the system prompt based on tone"""
+        """Get the system prompt based on tone (legacy method)"""
         base_prompt = """You are a helpful customer service representative. Your job is to generate professional, helpful, and courteous email replies to customer inquiries."""
         
         tone_instructions = {

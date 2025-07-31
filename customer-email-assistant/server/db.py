@@ -372,3 +372,58 @@ class Database:
         except Exception as e:
             print(f"Error saving pension info: {e}")
             return False
+    
+    # 응답 설정 관리 메서드들
+    async def get_response_settings(self) -> Optional[Dict]:
+        """응답 설정 조회"""
+        try:
+            # response_settings 컬렉션에서 최신 설정 조회
+            if not hasattr(self, 'response_settings_collection'):
+                self.response_settings_collection = self.db.response_settings
+            
+            settings = await self.response_settings_collection.find_one(
+                {}, sort=[("updated_at", -1)]
+            )
+            
+            if settings:
+                settings['id'] = str(settings['_id'])
+                del settings['_id']
+                return settings
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error getting response settings: {e}")
+            return None
+    
+    async def save_response_settings(self, settings: Dict) -> bool:
+        """응답 설정 저장"""
+        try:
+            if not hasattr(self, 'response_settings_collection'):
+                self.response_settings_collection = self.db.response_settings
+            
+            settings_data = {
+                'settings': settings,
+                'updated_at': datetime.utcnow(),
+                'created_at': datetime.utcnow()
+            }
+            
+            # 기존 설정이 있으면 업데이트, 없으면 새로 생성
+            existing = await self.response_settings_collection.find_one({})
+            
+            if existing:
+                # 업데이트
+                settings_data['created_at'] = existing.get('created_at', datetime.utcnow())
+                await self.response_settings_collection.replace_one(
+                    {"_id": existing["_id"]}, 
+                    settings_data
+                )
+            else:
+                # 새로 생성
+                await self.response_settings_collection.insert_one(settings_data)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error saving response settings: {e}")
+            return False

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Mail, Building, BarChart3, RefreshCw } from 'lucide-react';
+import { Mail, Building, BarChart3, RefreshCw, MessageSquare } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const location = useLocation();
@@ -8,6 +8,7 @@ const Layout = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Mail },
     { name: '펜션 정보', href: '/pension-info', icon: Building },
+    { name: '응답 구조', href: '/response-settings', icon: MessageSquare },
   ];
 
   return (
