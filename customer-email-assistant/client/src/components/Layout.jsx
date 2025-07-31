@@ -1,14 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Mail, Settings, BarChart3, RefreshCw } from 'lucide-react';
+import { Mail, Building, BarChart3, RefreshCw } from 'lucide-react';
 
 const Layout = ({ children }) => {
   const location = useLocation();
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Mail },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: '펜션 정보', href: '/pension-info', icon: Building },
   ];
 
   return (
@@ -18,9 +17,9 @@ const Layout = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Mail className="h-8 w-8 text-primary-500" />
+              <Building className="h-8 w-8 text-primary-500" />
               <h1 className="ml-2 text-xl font-semibold text-gray-900">
-                Email Assistant
+                🏨 RPA펜션 관리자
               </h1>
             </div>
             

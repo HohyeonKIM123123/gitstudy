@@ -316,3 +316,59 @@ class Database:
         except Exception as e:
             print(f"Error getting email trends: {e}")
             return {}
+    
+    # 펜션 정보 관리 메서드들
+    async def get_pension_info(self) -> Optional[Dict]:
+        """펜션 정보 조회"""
+        try:
+            # pension_info 컬렉션에서 최신 정보 조회
+            if not hasattr(self, 'pension_collection'):
+                self.pension_collection = self.db.pension_info
+            
+            pension_info = await self.pension_collection.find_one(
+                {}, sort=[("updated_at", -1)]
+            )
+            
+            if pension_info:
+                pension_info['id'] = str(pension_info['_id'])
+                del pension_info['_id']
+                return pension_info
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error getting pension info: {e}")
+            return None
+    
+    async def save_pension_info(self, raw_text: str, analyzed_info: Optional[Dict] = None) -> bool:
+        """펜션 정보 저장"""
+        try:
+            if not hasattr(self, 'pension_collection'):
+                self.pension_collection = self.db.pension_info
+            
+            pension_data = {
+                'raw_text': raw_text,
+                'analyzed_info': analyzed_info,
+                'updated_at': datetime.utcnow(),
+                'created_at': datetime.utcnow()
+            }
+            
+            # 기존 정보가 있으면 업데이트, 없으면 새로 생성
+            existing = await self.pension_collection.find_one({})
+            
+            if existing:
+                # 업데이트
+                pension_data['created_at'] = existing.get('created_at', datetime.utcnow())
+                await self.pension_collection.replace_one(
+                    {"_id": existing["_id"]}, 
+                    pension_data
+                )
+            else:
+                # 새로 생성
+                await self.pension_collection.insert_one(pension_data)
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error saving pension info: {e}")
+            return False

@@ -12,7 +12,7 @@ class ReplyGenerator:
                            sender: str, context: Dict = {}) -> str:
         """Generate an AI reply to an email"""
         try:
-            # Build the prompt
+            # Build the prompt with pension info
             system_prompt = self._get_system_prompt(context.get('tone', 'professional'))
             user_prompt = self._build_prompt(email_content, subject, sender, context)
             full_prompt = f"{system_prompt}\n\n{user_prompt}"
@@ -29,33 +29,53 @@ class ReplyGenerator:
             
         except Exception as e:
             print(f"Error generating reply: {e}")
-            return "Thank you for your email. We have received your message and will respond shortly."
+            return "안녕하세요. RPA펜션입니다. 문의해 주셔서 감사합니다. 빠른 시일 내에 답변드리겠습니다."
     
     def _build_prompt(self, email_content: str, subject: str, 
                      sender: str, context: Dict) -> str:
-        """Build the prompt for reply generation"""
+        """Build the prompt for reply generation with pension info"""
+        
+        # 펜션 정보 가져오기
+        pension_info = context.get('pension_info', {})
+        
+        pension_context = ""
+        if pension_info:
+            pension_context = f"""
+펜션 정보 (답변 시 참고):
+- 펜션명: RPA펜션
+- 위치: {pension_info.get('location', {}).get('address', '경기도 가평군')}
+- 체크인: {pension_info.get('checkin_checkout', {}).get('checkin', '오후 3시')}
+- 체크아웃: {pension_info.get('checkin_checkout', {}).get('checkout', '오전 11시')}
+- 기준인원: {pension_info.get('capacity', {}).get('base', '2')}인, 최대인원: {pension_info.get('capacity', {}).get('max', '4')}인
+- 추가인원 요금: {pension_info.get('capacity', {}).get('extra_charge', '1인당 20,000원')}
+- 주차: {pension_info.get('parking', {}).get('description', '무료 주차 가능')}
+- 시설: {', '.join(pension_info.get('facilities', ['바베큐장', '수영장']))}
+- 정책: {', '.join(pension_info.get('policies', ['전 객실 금연', '반려동물 동반 불가']))}
+- 취소정책: {pension_info.get('cancellation', {}).get('policy', '3일 전 전액환불, 2일 전 50%, 1일 전 환불불가')}
+"""
+
         prompt = f"""
-Please generate a professional reply to the following customer email:
+당신은 RPA펜션의 고객 서비스 담당자입니다. 다음 고객 문의에 대해 친절하고 정확한 답변을 생성해주세요.
 
-Subject: {subject}
-From: {sender}
+고객 문의:
+제목: {subject}
+발신자: {sender}
+내용: {email_content}
 
-Email Content:
-{email_content}
+{pension_context}
 
-Context:
-- Reply tone: {context.get('tone', 'professional')}
-- Customer service context: This is a customer service email that requires a helpful and courteous response
-- Keep the reply concise but comprehensive
-- Address the customer's concerns directly
-- Provide actionable next steps if applicable
+답변 작성 지침:
+1. 한국어로 정중하고 친근한 톤으로 답변
+2. 고객의 구체적인 질문에 정확한 정보 제공
+3. 펜션 정보를 바탕으로 상세하고 도움이 되는 답변 작성
+4. 예약이나 추가 문의가 필요한 경우 연락처 안내
+5. RPA펜션의 매력적인 특징들을 자연스럽게 언급
 
-Generate a reply that:
-1. Acknowledges the customer's email
-2. Addresses their specific concerns or questions
-3. Provides helpful information or next steps
-4. Maintains a {context.get('tone', 'professional')} tone
-5. Is concise but complete
+답변 형식:
+- 인사말로 시작
+- 문의 내용에 대한 구체적인 답변
+- 추가 정보나 도움이 될 만한 내용
+- 마무리 인사 및 연락처 안내
 """
         return prompt
     

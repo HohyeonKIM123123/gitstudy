@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import EmailDetail from './pages/EmailDetail';
-import Settings from './pages/Settings';
+import PensionInfo from './pages/PensionInfo';
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/email/:id" element={<EmailDetail />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/pension-info" element={<PensionInfo />} />
       </Routes>
     </Layout>
   );

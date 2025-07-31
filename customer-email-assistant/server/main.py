@@ -12,6 +12,7 @@ from reply_generator import ReplyGenerator
 from classifier import EmailClassifier
 from db import Database
 from gmail_sender import GmailSender
+from pension_analyzer import PensionAnalyzer
 
 # Load environment variables
 load_dotenv()
@@ -39,6 +40,7 @@ reply_generator = ReplyGenerator()
 email_classifier = EmailClassifier()
 db = Database()
 gmail_sender = GmailSender()
+pension_analyzer = PensionAnalyzer()
 
 # Pydantic models
 class EmailResponse(BaseModel):
@@ -59,6 +61,13 @@ class ClassificationResponse(BaseModel):
     priority: str
     tags: List[str]
     confidence: float
+
+class PensionInfoRequest(BaseModel):
+    raw_text: str
+    analyzed_info: Optional[dict] = None
+
+class PensionAnalyzeRequest(BaseModel):
+    text: str
 
 @app.get("/")
 async def root():
@@ -106,11 +115,16 @@ async def classify_email(email_id: str):
 
 @app.post("/emails/{email_id}/generate-reply")
 async def generate_reply(email_id: str, context: dict = {}):
-    """Generate AI reply for email"""
+    """Generate AI reply for email with pension info"""
     try:
         email = await db.get_email(email_id)
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
+        
+        # 펜션 정보 가져오기
+        pension_info = await db.get_pension_info()
+        if pension_info and pension_info.get('analyzed_info'):
+            context['pension_info'] = pension_info['analyzed_info']
         
         reply = await reply_generator.generate_reply(
             email_content=email['body'],
@@ -211,6 +225,38 @@ async def get_stats():
     try:
         stats = await db.get_email_stats()
         return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 펜션 정보 관리 API
+@app.get("/pension-info")
+async def get_pension_info():
+    """펜션 정보 조회"""
+    try:
+        pension_info = await db.get_pension_info()
+        return pension_info or {
+            "raw_text": "",
+            "analyzed_info": None,
+            "updated_at": None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/pension-info")
+async def save_pension_info(request: PensionInfoRequest):
+    """펜션 정보 저장"""
+    try:
+        await db.save_pension_info(request.raw_text, request.analyzed_info)
+        return {"message": "펜션 정보가 저장되었습니다."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/pension-info/analyze")
+async def analyze_pension_info(request: PensionAnalyzeRequest):
+    """펜션 정보 AI 분석"""
+    try:
+        analyzed_info = await pension_analyzer.analyze_pension_info(request.text)
+        return {"analyzed_info": analyzed_info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
