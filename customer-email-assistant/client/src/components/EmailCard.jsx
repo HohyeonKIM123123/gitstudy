@@ -58,7 +58,7 @@ const EmailCard = ({ email }) => {
 
             {/* Preview */}
             <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-              {email.preview || email.body?.substring(0, 150) + '...'}
+              {email.preview || email.text_content?.substring(0, 150) + '...' || email.body?.substring(0, 150) + '...'}
             </p>
 
             {/* Tags */}

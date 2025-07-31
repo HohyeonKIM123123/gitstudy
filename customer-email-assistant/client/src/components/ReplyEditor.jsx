@@ -9,7 +9,7 @@ const ReplyEditor = ({ email, onSend, onCancel, onSave }) => {
   const generateReply = async () => {
     setIsGenerating(true);
     try {
-      const response = await fetch(`/api/emails/${email.id}/generate-reply`, {
+      const response = await fetch(`http://localhost:8000/emails/${email.id}/generate-reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -23,6 +23,7 @@ const ReplyEditor = ({ email, onSend, onCancel, onSave }) => {
       setReplyContent(data.reply);
     } catch (error) {
       console.error('Failed to generate reply:', error);
+      alert('AI 답장 생성에 실패했습니다: ' + error.message);
     }
     setIsGenerating(false);
   };

@@ -20,6 +20,17 @@ const EmailDetail = () => {
   const loadEmail = async () => {
     try {
       const emailData = await emailApi.getEmail(id);
+      
+      // 디버깅: 받은 데이터 확인
+      console.log('🔍 받은 이메일 데이터:', emailData);
+      console.log('📧 제목:', emailData.subject);
+      console.log('📝 본문 타입:', typeof emailData.body);
+      console.log('📝 본문 길이:', emailData.body?.length);
+      console.log('📝 본문 미리보기:', emailData.body?.substring(0, 200));
+      console.log('📄 텍스트 내용 타입:', typeof emailData.text_content);
+      console.log('📄 텍스트 내용 길이:', emailData.text_content?.length);
+      console.log('📄 텍스트 내용 미리보기:', emailData.text_content?.substring(0, 200));
+      
       setEmail(emailData);
       
       // Mark as read if unread
@@ -124,8 +135,11 @@ const EmailDetail = () => {
             Archive
           </button>
           <button
-            onClick={() => setShowReplyEditor(!showReplyEditor)}
-            className="btn-primary"
+            onClick={() => {
+              console.log('Reply 버튼 클릭됨, 현재 showReplyEditor:', showReplyEditor);
+              setShowReplyEditor(!showReplyEditor);
+            }}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
           >
             <Reply className="h-4 w-4 mr-2" />
             Reply
@@ -192,10 +206,9 @@ const EmailDetail = () => {
 
         {/* Email Body */}
         <div className="prose max-w-none">
-          <div 
-            className="text-gray-900 whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: email.body || email.text_content }}
-          />
+          <div className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
+            {email.text_content || email.body || 'No content available'}
+          </div>
         </div>
       </div>
 

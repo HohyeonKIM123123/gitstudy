@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 from typing import List, Optional
 from pydantic import BaseModel
 
-from gmail_imap_reader import GmailIMAPReader
+from simple_email_reader import SimpleEmailReader
 from reply_generator import ReplyGenerator
 from classifier import EmailClassifier
 from db import Database
+from gmail_sender import GmailSender
 
 # Load environment variables
 load_dotenv()
@@ -28,15 +29,16 @@ app.add_middleware(
 
 # Initialize services
 try:
-    gmail_reader = GmailIMAPReader()
-    print("Gmail IMAP reader initialized successfully")
+    gmail_reader = SimpleEmailReader()
+    print("Simple email reader initialized successfully")
 except Exception as e:
-    print(f"Gmail IMAP reader initialization failed: {e}")
+    print(f"Simple email reader initialization failed: {e}")
     gmail_reader = None
 
 reply_generator = ReplyGenerator()
 email_classifier = EmailClassifier()
 db = Database()
+gmail_sender = GmailSender()
 
 # Pydantic models
 class EmailResponse(BaseModel):
@@ -123,24 +125,39 @@ async def generate_reply(email_id: str, context: dict = {}):
 
 @app.post("/emails/{email_id}/send-reply")
 async def send_reply(email_id: str, reply_request: ReplyRequest):
-    """Send reply via Gmail"""
+    """Send reply via Gmail SMTP"""
     try:
         email = await db.get_email(email_id)
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
         
-        # Send reply via Gmail (IMAP doesn't support sending, use SMTP later)
-        # For now, just mark as replied
-        success = True  # Placeholder
+        print(f"📧 답장 전송 시도: {email['sender_email']}")
+        print(f"📝 답장 내용: {reply_request.content[:100]}...")
+        
+        # 실제 Gmail로 답장 전송
+        success = gmail_sender.send_reply(
+            to_email=email['sender_email'],
+            subject=email['subject'],
+            reply_content=reply_request.content,
+            original_message_id=email.get('gmail_id')
+        )
         
         if success:
-            # Update email status
-            await db.update_email(email_id, {'status': 'replied'})
-            return {"message": "Reply sent successfully"}
+            # DB에서 이메일 상태를 'replied'로 업데이트
+            print(f"✅ Gmail 전송 성공, DB 업데이트 중...")
+            update_result = await db.update_email(email_id, {'status': 'replied'})
+            print(f"📊 DB 업데이트 결과: {update_result}")
+            
+            return {
+                "message": "Reply sent successfully to Gmail",
+                "sent_to": email['sender_email'],
+                "status": "replied"
+            }
         else:
-            raise HTTPException(status_code=500, detail="Failed to send reply")
+            raise HTTPException(status_code=500, detail="Failed to send reply to Gmail")
             
     except Exception as e:
+        print(f"❌ 답장 전송 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/emails/{email_id}")

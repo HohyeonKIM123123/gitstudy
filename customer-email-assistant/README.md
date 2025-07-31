@@ -14,12 +14,14 @@ AI-powered customer service email assistant that automatically classifies incomi
 ## Tech Stack
 
 ### Frontend
+
 - React 18
 - Tailwind CSS
 - Axios for API calls
 - React Router for navigation
 
 ### Backend
+
 - FastAPI (Python)
 - Gmail API
 - OpenAI API
@@ -28,26 +30,32 @@ AI-powered customer service email assistant that automatically classifies incomi
 ## Setup
 
 ### 1. Install Dependencies
+
 ```bash
 npm run install-all
 ```
 
 ### 2. Environment Configuration
+
 Copy `.env` and fill in your API keys:
+
 - Gmail API credentials
 - OpenAI API key
 - Database connection string
 
 ### 3. Gmail API Setup
+
 1. Go to Google Cloud Console
 2. Enable Gmail API
 3. Create OAuth 2.0 credentials
 4. Add authorized redirect URIs
 
 ### 4. Database Setup
+
 Choose either MongoDB or Firebase and update the configuration in `.env`
 
 ### 5. Run the Application
+
 ```bash
 npm run dev
 ```

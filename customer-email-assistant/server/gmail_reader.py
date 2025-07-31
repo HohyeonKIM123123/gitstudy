@@ -1,6 +1,7 @@
 import os
 import base64
 import email
+import quopri
 from datetime import datetime
 from typing import List, Dict, Optional
 from google.auth.transport.requests import Request
@@ -108,6 +109,57 @@ class GmailReader:
             print(f'An error occurred: {error}')
             return []
     
+    def _decode_body(self, body: str, encoding: str = None) -> str:
+        """Decode quoted-printable or base64 encoded email body"""
+        if encoding and encoding.lower() == "quoted-printable":
+            try:
+                return quopri.decodestring(body).decode('utf-8')
+            except Exception:
+                return body
+        return body
+
+    def _extract_body(self, payload: Dict) -> str:
+        """Extract email body from payload, prefer HTML if available"""
+        body = ""
+        encoding = None
+        html_body = ""
+        text_body = ""
+
+        if 'parts' in payload:
+            for part in payload['parts']:
+                mime_type = part.get('mimeType')
+                data = part['body'].get('data')
+                encoding = part['body'].get('encoding')
+                if not data:
+                    continue
+                decoded = base64.urlsafe_b64decode(data).decode('utf-8')
+                decoded = self._decode_body(decoded, encoding)
+                if mime_type == 'text/html':
+                    html_body = decoded
+                elif mime_type == 'text/plain':
+                    text_body = decoded
+            # Prefer HTML body if available
+            body = html_body if html_body else text_body
+        else:
+            if payload['body'].get('data'):
+                data = payload['body']['data']
+                encoding = payload['body'].get('encoding')
+                decoded = base64.urlsafe_b64decode(data).decode('utf-8')
+                body = self._decode_body(decoded, encoding)
+
+        return body
+
+    def _html_to_text(self, html_content: str) -> str:
+        """Convert HTML content to plain text"""
+        if not html_content:
+            return ""
+        
+        try:
+            soup = BeautifulSoup(html_content, 'html.parser')
+            return soup.get_text(separator='\n', strip=True)
+        except Exception:
+            return html_content
+    
     async def _get_email_details(self, message_id: str) -> Optional[Dict]:
         """Get detailed information about a specific email"""
         try:
@@ -127,7 +179,7 @@ class GmailReader:
             # Parse sender email and name
             sender_email, sender_name = self._parse_sender(sender)
             
-            # Extract email body
+            # Extract email body (prefer HTML)
             body = self._extract_body(message['payload'])
             
             # Convert date to ISO format
@@ -139,8 +191,8 @@ class GmailReader:
                 'subject': subject or 'No Subject',
                 'sender_email': sender_email,
                 'sender_name': sender_name,
-                'body': body,
-                'text_content': self._html_to_text(body),
+                'body': body,  # HTML or plain text, decoded
+                'text_content': self._html_to_text(body),  # Always plain text for search/filter
                 'received_at': received_at,
                 'thread_id': message.get('threadId'),
                 'labels': message.get('labelIds', [])
@@ -167,48 +219,6 @@ class GmailReader:
         else:
             # Format: "email@domain.com"
             return sender.strip(), None
-    
-    def _extract_body(self, payload: Dict) -> str:
-        """Extract email body from payload"""
-        body = ""
-        
-        if 'parts' in payload:
-            for part in payload['parts']:
-                if part['mimeType'] == 'text/plain':
-                    data = part['body']['data']
-                    body = base64.urlsafe_b64decode(data).decode('utf-8')
-                    break
-                elif part['mimeType'] == 'text/html':
-                    data = part['body']['data']
-                    body = base64.urlsafe_b64decode(data).decode('utf-8')
-        else:
-            if payload['body'].get('data'):
-                body = base64.urlsafe_b64decode(
-                    payload['body']['data']
-                ).decode('utf-8')
-        
-        return body
-    
-    def _html_to_text(self, html_content: str) -> str:
-        """Convert HTML content to plain text"""
-        if not html_content:
-            return ""
-        
-        try:
-            soup = BeautifulSoup(html_content, 'html.parser')
-            return soup.get_text(strip=True)
-        except:
-            return html_content
-    
-    def _parse_date(self, date_str: str) -> str:
-        """Parse email date to ISO format"""
-        try:
-            # Parse various date formats
-            from email.utils import parsedate_to_datetime
-            dt = parsedate_to_datetime(date_str)
-            return dt.isoformat()
-        except:
-            return datetime.now().isoformat()
     
     async def send_reply(self, original_email_id: str, reply_content: str, 
                         to_email: str, subject: str) -> bool:
