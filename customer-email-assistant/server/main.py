@@ -76,6 +76,9 @@ class ResponsePreviewRequest(BaseModel):
     settings: dict
     sampleQuery: str
 
+class GenerateReplyRequest(BaseModel):
+    context: Optional[dict] = {}
+
 @app.get("/")
 async def root():
     return {"message": "Customer Email Assistant API", "version": "1.0.0"}
@@ -120,18 +123,39 @@ async def classify_email(email_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class GenerateReplyRequest(BaseModel):
+    context: Optional[dict] = {}
+
 @app.post("/emails/{email_id}/generate-reply")
-async def generate_reply(email_id: str, context: dict = {}):
+async def generate_reply(email_id: str, request: GenerateReplyRequest = None):
     """Generate AI reply for email with pension info"""
     try:
+        print(f"📧 이메일 답장 생성 요청: {email_id}")
+        
         email = await db.get_email(email_id)
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
         
+        print(f"📝 이메일 내용: {email['subject']} - {email['body'][:100]}...")
+        
+        # 요청에서 컨텍스트 가져오기
+        context = request.context if request else {}
+        print(f"📦 요청 컨텍스트: {context}")
+        
         # 펜션 정보 가져오기
         pension_info = await db.get_pension_info()
+        print(f"🏨 펜션 정보 조회 결과: {pension_info is not None}")
+        
         if pension_info and pension_info.get('analyzed_info'):
             context['pension_info'] = pension_info['analyzed_info']
+            print(f"✅ 펜션 정보 컨텍스트에 포함됨")
+            print(f"📊 펜션 정보 키들: {list(pension_info['analyzed_info'].keys()) if pension_info.get('analyzed_info') else 'None'}")
+        else:
+            print(f"❌ 펜션 정보가 없거나 analyzed_info가 없음")
+            if pension_info:
+                print(f"📄 펜션 정보 구조: {list(pension_info.keys())}")
+        
+        print(f"🤖 AI 답장 생성 시작...")
         
         reply = await reply_generator.generate_reply(
             email_content=email['body'],
@@ -140,8 +164,11 @@ async def generate_reply(email_id: str, context: dict = {}):
             context=context
         )
         
+        print(f"✅ 답장 생성 완료: {reply[:100]}...")
+        
         return {"reply": reply}
     except Exception as e:
+        print(f"❌ 답장 생성 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/emails/{email_id}/send-reply")
@@ -302,6 +329,10 @@ async def save_response_settings(request: ResponseSettingsRequest):
 async def generate_response_preview(request: ResponsePreviewRequest):
     """응답 설정 미리보기 생성"""
     try:
+        print(f"🔍 미리보기 요청 받음:")
+        print(f"📝 샘플 쿼리: {request.sampleQuery}")
+        print(f"⚙️ 응답 설정: {request.settings}")
+        
         # 응답 설정을 컨텍스트에 포함
         context = {
             "response_settings": request.settings,
@@ -310,8 +341,18 @@ async def generate_response_preview(request: ResponsePreviewRequest):
         
         # 펜션 정보도 포함
         pension_info = await db.get_pension_info()
+        print(f"🏨 펜션 정보 조회 결과: {pension_info is not None}")
+        
         if pension_info and pension_info.get('analyzed_info'):
             context['pension_info'] = pension_info['analyzed_info']
+            print(f"✅ 펜션 정보 컨텍스트에 포함됨")
+            print(f"📊 펜션 정보 키들: {list(pension_info['analyzed_info'].keys()) if pension_info.get('analyzed_info') else 'None'}")
+        else:
+            print(f"❌ 펜션 정보가 없거나 analyzed_info가 없음")
+            if pension_info:
+                print(f"📄 펜션 정보 구조: {list(pension_info.keys())}")
+        
+        print(f"🤖 AI 응답 생성 시작...")
         
         # 미리보기 응답 생성
         preview = await reply_generator.generate_reply(
@@ -321,8 +362,11 @@ async def generate_response_preview(request: ResponsePreviewRequest):
             context=context
         )
         
+        print(f"✅ 미리보기 응답 생성 완료: {preview[:100]}...")
+        
         return {"preview": preview}
     except Exception as e:
+        print(f"❌ 미리보기 생성 오류: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.on_event("startup")

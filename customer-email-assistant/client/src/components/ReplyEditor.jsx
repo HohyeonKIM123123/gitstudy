@@ -7,22 +7,56 @@ const ReplyEditor = ({ email, onSend, onCancel, onSave }) => {
   const [isSending, setIsSending] = useState(false);
 
   const generateReply = async () => {
+    console.log('🔍 AI Generate 버튼 클릭됨');
+    console.log('📧 이메일 ID:', email.id);
+    console.log('📝 이메일 내용:', email.subject, email.body?.substring(0, 100));
+    
     setIsGenerating(true);
     try {
+      // 먼저 응답 설정을 가져옵니다
+      console.log('⚙️ 응답 설정 가져오는 중...');
+      const settingsResponse = await fetch('http://localhost:8000/response-settings');
+      let responseSettings = {};
+      
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        responseSettings = settingsData.settings || {};
+        console.log('✅ 응답 설정 로드됨:', responseSettings);
+      } else {
+        console.log('❌ 응답 설정 로드 실패');
+      }
+
+      // 요청 데이터 구성
+      const requestData = {
+        context: {
+          response_settings: responseSettings,
+          include_signature: true
+        }
+      };
+      
+      console.log('📦 서버로 전송할 데이터:', requestData);
+
+      // 응답 설정을 포함하여 답장 생성 요청
+      console.log('🚀 서버로 답장 생성 요청 전송 중...');
       const response = await fetch(`http://localhost:8000/emails/${email.id}/generate-reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          context: {
-            tone: 'professional',
-            include_signature: true
-          }
-        })
+        body: JSON.stringify(requestData)
       });
+      
+      console.log('📡 서버 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`서버 응답 오류: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('✅ 서버 응답 데이터:', data);
+      console.log('🤖 생성된 답장:', data.reply);
+      
       setReplyContent(data.reply);
     } catch (error) {
-      console.error('Failed to generate reply:', error);
+      console.error('❌ AI 답장 생성 실패:', error);
       alert('AI 답장 생성에 실패했습니다: ' + error.message);
     }
     setIsGenerating(false);
