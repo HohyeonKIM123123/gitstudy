@@ -1,0 +1,20 @@
+# 터미널 환경 변경
+
+## 확장: ms-python.debugpy
+
+Enables use of [no-config debugging](https://github.com/microsoft/vscode-python-debugger/wiki/No%E2%80%90Config-Debugging), `debugpy <script.py>`, in the terminal.
+
+- `PYDEVD_DISABLE_FILE_VALIDATION=1`
+- `VSCODE_DEBUGPY_ADAPTER_ENDPOINTS=c:\Users\USER\.kiro\extensions\ms-python.debugpy-2025.6.0-win32-x64\.noConfigDebugAdapterEndpoints\endpoint-dd0c7e85b0233ba1.txt`
+- `PATH=${env:PATH};c:\Users\USER\.kiro\extensions\ms-python.debugpy-2025.6.0-win32-x64\bundled\scripts\noConfigScripts`
+- `BUNDLED_DEBUGPY_PATH=c:\Users\USER\.kiro\extensions\ms-python.debugpy-2025.6.0-win32-x64\bundled\libs\debugpy`
+
+## 확장: vscode.git
+
+다음 기능을 사용하도록 설정: git auth provider
+
+- `GIT_ASKPASS=c:\Users\USER\AppData\Local\Programs\Kiro\resources\app\extensions\git\dist\askpass.sh`
+- `VSCODE_GIT_ASKPASS_NODE=C:\Users\USER\AppData\Local\Programs\Kiro\Kiro.exe`
+- `VSCODE_GIT_ASKPASS_EXTRA_ARGS=`
+- `VSCODE_GIT_ASKPASS_MAIN=c:\Users\USER\AppData\Local\Programs\Kiro\resources\app\extensions\git\dist\askpass-main.js`
+- `VSCODE_GIT_IPC_HANDLE=\\.\pipe\vscode-git-9e8d6bbde7-sock`
